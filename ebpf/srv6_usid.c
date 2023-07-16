@@ -21,17 +21,12 @@
 
 static volatile const __u16 USID_BLOCK_LENGTH = 48;
 static volatile const __u16 USID_LENGTH = 16;
+static volatile const __u16 USID_LIST_MAX = 7;
 
 static volatile const bool ENABLE_SEG6_FLAVOR_PSP = true;
 static volatile const bool ENABLE_SEG6_FLAVOR_USP = true;
 
 static volatile const bool ENABLE_STATS = true;
-
-struct metadata
-{
-  __u16 cookie;
-  __u16 pkt_len;
-} __attribute__((packed));
 
 struct bpf_map_def SEC("maps") stats = {
     .type = BPF_MAP_TYPE_ARRAY,
@@ -70,8 +65,8 @@ static __always_inline struct ipv6_sr_hdr *get_srh(struct __sk_buff *skb)
   void *data_end = (void *)(long)skb->data_end;
   void *data = (void *)(long)skb->data;
 
-  struct ipv6hdr *ipv6 = data;
-  if ((void *)ipv6 + sizeof(*ipv6) <= data_end)
+  struct ipv6hdr *ipv6 = get_ipv6(skb);
+  if (ipv6)
   {
     if (ipv6->nexthdr == IPPROTO_ROUTING)
     {
@@ -90,9 +85,9 @@ static __always_inline bool pop_srh(struct __sk_buff *skb)
   void *data_end = (void *)(long)skb->data_end;
   void *data = (void *)(long)skb->data;
 
-  struct ipv6hdr *ipv6 = data;
+  struct ipv6hdr *ipv6 = get_ipv6(skb);
   struct ipv6_sr_hdr *srh = get_srh(skb);
-  if (srh != NULL)
+  if (srh)
   {
     unsigned long long pkt_len = data_end - data;
     unsigned long long ipv6_len = sizeof(*ipv6);
@@ -116,12 +111,13 @@ static __always_inline bool seg6local_end(struct __sk_buff *skb)
   void *data = (void *)(long)skb->data;
 
   bool update_segs = false;
-  struct ipv6hdr *ipv6 = data;
+  struct ipv6hdr *ipv6 = get_ipv6(skb);
   struct ipv6_sr_hdr *srh = get_srh(skb);
-  if (srh != NULL && (void *)srh + sizeof(*srh) + sizeof(__u128) <= data_end)
+  if (srh)
   {
-    if (srh->segments_left != 0)
+    if (srh->segments_left > 0)
     {
+      // update segment
       srh->segments_left--;
       __u16 next_seg_i = srh->first_segment - srh->segments_left;
       if (next_seg_i >= 0 && (void *)&srh->segments + sizeof(struct in6_addr) * (next_seg_i + 1) <= data_end)
@@ -152,12 +148,12 @@ static __always_inline int usid_behavior_uN(struct __sk_buff *skb)
   void *data_end = (void *)(long)skb->data_end;
   void *data = (void *)(long)skb->data;
 
-  struct ipv6hdr *ipv6 = data;
+  struct ipv6hdr *ipv6 = get_ipv6(skb);
   struct ipv6_sr_hdr *srh = get_srh(skb);
-  if (srh != NULL)
+  if (srh)
   {
-    __u16 *usid_list = &ipv6->daddr;
-    __u16 usid_pointer = USID_BLOCK_LENGTH / USID_LENGTH;
+    __u16 *usid_list = (void *)&ipv6->daddr;
+    int usid_pointer = USID_BLOCK_LENGTH / USID_LENGTH;
     if (usid_pointer >= 0 && usid_pointer <= 7)
     {
       if ((usid_pointer < 7 && usid_list[usid_pointer + 1] == USID_END_OF_CONTAINER) || usid_pointer == 7)
@@ -167,22 +163,18 @@ static __always_inline int usid_behavior_uN(struct __sk_buff *skb)
           increment_stats(BPF_DROP);
           return BPF_DROP;
         }
-        // reset
-        data_end = (void *)(long)skb->data_end;
-        data = (void *)(long)skb->data;
-        ipv6 = data;
-        srh = get_srh(skb);
-        if (srh == NULL)
+        ipv6 = get_ipv6(skb);
+        if (!ipv6)
         {
-          return true;
+          return false;
         }
-        usid_list = &ipv6->daddr;
+        return true;
       }
 
-      // update usid
-      for (int i = usid_pointer; i < 7; i++)
+      __u16 left_usids = USID_LIST_MAX - usid_pointer;
+      if (left_usids > 0)
       {
-        usid_list[i] = usid_list[i + 1];
+        __builtin_memcpy(&usid_list[usid_pointer], &usid_list[usid_pointer + 1], sizeof(__u128) * left_usids);
       }
       usid_list[7] = USID_END_OF_CONTAINER;
       increment_stats(BPF_OK);

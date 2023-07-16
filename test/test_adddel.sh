@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+cd ../; make build; cd -
+
 sudo ./netns_network_examples/simple/2hosts_1router.sh -c
 sudo ip netns exec r1 ../cmd/srv6_usid/main add fdbb:bbbb:0100::/48 -action uN -l r1_h1
 sudo sleep 1
