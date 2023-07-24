@@ -24,13 +24,8 @@ sudo apt install -y linux-tools-$(uname -r) linux-tools-generic
 sudo apt install -y libbpf-dev
 
 # install go
-wget "https://go.dev/dl/go1.18.3.linux-amd64.tar.gz"
-sudo tar -C /usr/local/ -xzf go1.18.3.linux-amd64.tar.gz 
-rm go1.18.3.linux-amd64.tar.gz
-echo "export PATH=\$PATH:/usr/local/go/bin" >> /home/vagrant/.bashrc
-echo "export GOPATH=\$HOME/go" >> /home/vagrant/.bashrc
-echo "export PATH=\$PATH:\$GOPATH/bin" >> /home/vagrant/.bashrc
-export PATH=$PATH:/usr/local/go/bin
+# wget "https://go.dev/dl/go1.18.3
+
 
 # install docker
 # sudo mkdir -m 0755 -p /etc/apt/keyrings

@@ -4,3 +4,6 @@
 [submodule "test/netns_network_examples"]
 	path = test/netns_network_examples
 	url = https://github.com/shu1r0/netns_network_examples.git
+[submodule "test/srv6_ping"]
+	path = test/srv6_ping
+	url = https://github.com/shu1r0/srv6_ping

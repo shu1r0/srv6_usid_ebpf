@@ -2,8 +2,8 @@ package main
 
 import (
 	cebpf "github.com/cilium/ebpf"
-	"github.com/shu1r0/srv6_usid_end_ebpf/pkg/ebpf"
-	"github.com/shu1r0/srv6_usid_end_ebpf/pkg/srv6"
+	"github.com/shu1r0/srv6_usid_ebpf/pkg/ebpf"
+	"github.com/shu1r0/srv6_usid_ebpf/pkg/srv6"
 	"github.com/urfave/cli"
 	"log"
 	"net"

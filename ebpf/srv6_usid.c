@@ -19,14 +19,16 @@
 
 #define USID_END_OF_CONTAINER 0x0000
 
-static volatile const __u16 USID_BLOCK_LENGTH = 48;
-static volatile const __u16 USID_LENGTH = 16;
+static const __u16 USID_BLOCK_LENGTH = 48;
+static const __u16 USID_LENGTH = 16;
 static volatile const __u16 USID_LIST_MAX = 7;
 
 static volatile const bool ENABLE_SEG6_FLAVOR_PSP = true;
 static volatile const bool ENABLE_SEG6_FLAVOR_USP = true;
 
 static volatile const bool ENABLE_STATS = true;
+
+#define USID_BLOCK_POINTER USID_BLOCK_LENGTH / USID_LENGTH
 
 struct bpf_map_def SEC("maps") stats = {
     .type = BPF_MAP_TYPE_ARRAY,
@@ -63,7 +65,6 @@ static __always_inline struct ipv6hdr *get_ipv6(struct __sk_buff *skb)
 static __always_inline struct ipv6_sr_hdr *get_srh(struct __sk_buff *skb)
 {
   void *data_end = (void *)(long)skb->data_end;
-  void *data = (void *)(long)skb->data;
 
   struct ipv6hdr *ipv6 = get_ipv6(skb);
   if (ipv6)
@@ -143,38 +144,50 @@ static __always_inline bool seg6local_end(struct __sk_buff *skb)
   return false;
 }
 
-static __always_inline int usid_behavior_uN(struct __sk_buff *skb)
+static __always_inline int usid_behavior_uN(struct __sk_buff *skb, __u16 usid_bolck_length, __u16 usid_length)
 {
   void *data_end = (void *)(long)skb->data_end;
   void *data = (void *)(long)skb->data;
 
   struct ipv6hdr *ipv6 = get_ipv6(skb);
   struct ipv6_sr_hdr *srh = get_srh(skb);
-  if (srh)
+  if (srh != NULL)
   {
     __u16 *usid_list = (void *)&ipv6->daddr;
-    int usid_pointer = USID_BLOCK_LENGTH / USID_LENGTH;
+    __u16 usid_pointer = usid_bolck_length / usid_length;
     if (usid_pointer >= 0 && usid_pointer <= 7)
     {
-      if ((usid_pointer < 7 && usid_list[usid_pointer + 1] == USID_END_OF_CONTAINER) || usid_pointer == 7)
+      __u16 next_usid = 0;
+      if (usid_pointer > 1 && usid_pointer < 7)
       {
-        if (!seg6local_end(skb))
-        {
-          increment_stats(BPF_DROP);
-          return BPF_DROP;
-        }
-        ipv6 = get_ipv6(skb);
-        if (!ipv6)
-        {
-          return false;
-        }
-        return true;
+        next_usid = usid_list[usid_pointer + 1];
+      }
+      if (next_usid == 0 || usid_pointer == 7)
+      {
+        // if (!seg6local_end(skb))
+        // {
+        //   increment_stats(BPF_DROP);
+        //   return BPF_DROP;
+        // }
+        // ipv6 = get_ipv6(skb);
+        // if (!ipv6)
+        // {
+        //   increment_stats(BPF_DROP);
+        //   return BPF_DROP;
+        // }
+        increment_stats(BPF_OK);
+        return BPF_OK;
       }
 
-      __u16 left_usids = USID_LIST_MAX - usid_pointer;
-      if (left_usids > 0)
+      // update usid
+      // The reason the loop starts at index 1 is to expand the loop.
+#pragma clang loop unroll(full)
+      for (int i = 1; i < 7; i++)
       {
-        __builtin_memcpy(&usid_list[usid_pointer], &usid_list[usid_pointer + 1], sizeof(__u128) * left_usids);
+        if (i >= usid_pointer)
+        {
+          usid_list[i] = usid_list[i + 1];
+        }
       }
       usid_list[7] = USID_END_OF_CONTAINER;
       increment_stats(BPF_OK);
@@ -188,7 +201,7 @@ static __always_inline int usid_behavior_uN(struct __sk_buff *skb)
 SEC("lwt_xmit/usid_uN")
 int do_usid_uN(struct __sk_buff *skb)
 {
-  return usid_behavior_uN(skb);
+  return usid_behavior_uN(skb, USID_BLOCK_LENGTH, USID_LENGTH);
 }
 
 SEC("lwt_xmit/usid_uD")

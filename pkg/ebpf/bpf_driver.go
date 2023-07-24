@@ -7,7 +7,7 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// -cflags "-Wall"
+// -cflags "-O2 -Wall"
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go srv6usid ../../ebpf/srv6_usid.c -- -I../../ebpf/ -I/usr/include/
 
 type EBpfObjects struct {

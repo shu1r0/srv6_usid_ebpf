@@ -1,4 +1,4 @@
-module github.com/shu1r0/srv6_usid_end_ebpf
+module github.com/shu1r0/srv6_usid_ebpf
 
 go 1.18
 
