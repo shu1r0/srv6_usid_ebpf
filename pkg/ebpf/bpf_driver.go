@@ -7,7 +7,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// -cflags "-O2 -Wall"
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cflags "-O2 -Wall" srv6usid ../../ebpf/srv6_usid.c -- -I../../ebpf/ -I/usr/include/
 
 type EBpfObjects struct {
@@ -21,12 +20,12 @@ func NewEBpfObjects(usidBlockLen uint16, options *ebpf.CollectionOptions) (*EBpf
 	if err != nil {
 		return nil, fmt.Errorf("Load program err: %s", err)
 	}
-	// if _, ok := spec.Maps[".rodata"]; !ok {
-	// 	return nil, fmt.Errorf("could not find .rodata section to set argument\n")
-	// }
-	// if err := spec.RewriteConstants(map[string]interface{}{"USID_BLOCK_LENGTH": usidBlockLen}); err != nil {
-	// 	return nil, fmt.Errorf("Rewrite USID_BLOCK_LENGTH err: %s", err)
-	// }
+	if _, ok := spec.Maps[".rodata"]; !ok {
+		return nil, fmt.Errorf("could not find .rodata section to set argument\n")
+	}
+	if err := spec.RewriteConstants(map[string]interface{}{"USID_BLOCK_LENGTH": usidBlockLen}); err != nil {
+		return nil, fmt.Errorf("Rewrite USID_BLOCK_LENGTH err: %s", err)
+	}
 
 	if err := spec.LoadAndAssign(driver, options); err != nil {
 		return nil, fmt.Errorf("Load and Assign err: %s", err)

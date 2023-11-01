@@ -171,9 +171,11 @@ def main():
     n6.vtysh_cmd(n6_conf)
 
     n1.cmd("../cmd/srv6_usid/main add fdbb:bbbb:0100::/48 -action uN -link n1_n2", verbose=True)
-    n1.cmd("ip -6 route add fdbb:bbbb:f00d::/48 encap seg6local action End.DT6 table 0 dev n1_n2", verbose=True)
+    # n1.cmd("ip -6 route add fdbb:bbbb:f00d::/48 encap seg6local action End.DT6 table 0 dev n1_n2", verbose=True)
+    n1.cmd("ip -6 route add fdbb:bbbb:0100:f00d::/64 encap seg6local action End.DT6 table 0 dev n1_n2", verbose=True)
     n2.cmd("../cmd/srv6_usid/main add fdbb:bbbb:0200::/48 -action uN -link n2_n1", verbose=True)
-    n2.cmd("ip -6 route add fdbb:bbbb:f00d::/48 encap seg6local action End.DT6 table 0 dev n2_n1", verbose=True)
+    # n2.cmd("ip -6 route add fdbb:bbbb:f00d::/48 encap seg6local action End.DT6 table 0 dev n2_n1", verbose=True)
+    n2.cmd("ip -6 route add fdbb:bbbb:0200:f00d::/64 encap seg6local action End.DT6 table 0 dev n2_n1", verbose=True)
     n3.cmd("../cmd/srv6_usid/main add fdbb:bbbb:0300::/48 -action uN -link n3_n4", verbose=True)
     n4.cmd("../cmd/srv6_usid/main add fdbb:bbbb:0400::/48 -action uN -link n4_n3", verbose=True)
     n5.cmd("../cmd/srv6_usid/main add fdbb:bbbb:0500::/48 -action uN -link n5_n6", verbose=True)

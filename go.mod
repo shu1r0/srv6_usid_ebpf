@@ -17,4 +17,4 @@ require (
 	golang.org/x/sys v0.10.0 // indirect
 )
 
-replace github.com/vishvananda/netlink => ./netlink
+// replace github.com/vishvananda/netlink => ./netlink

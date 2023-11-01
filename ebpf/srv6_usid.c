@@ -138,11 +138,11 @@ static __always_inline bool seg6local_end(struct __sk_buff *skb)
   return false;
 }
 
-static __always_inline int usid_behavior_uN(struct __sk_buff *skb, __u16 usid_bolck_length, __u16 usid_length)
+static __always_inline int usid_behavior_uN(struct __sk_buff *skb, __u16 usid_bolck_length)
 {
   void *data_end = (void *)(long)skb->data_end;
 
-  if (usid_bolck_length <= 0 || usid_length <= 0 || usid_bolck_length <= usid_length)
+  if (usid_bolck_length <= 0 || usid_bolck_length <= USID_LENGTH)
   {
     return BPF_DROP;
   }
@@ -154,7 +154,7 @@ static __always_inline int usid_behavior_uN(struct __sk_buff *skb, __u16 usid_bo
     __u16 *usid_list = (void *)&ipv6->daddr;
     __u16 *usid_list_end = (void *)&ipv6->daddr + sizeof(ipv6->daddr);
 
-    __u16 usid_pointer = usid_bolck_length / usid_length;
+    __u16 usid_pointer = usid_bolck_length / USID_LENGTH;
     if (usid_pointer > 0 && usid_pointer <= 7)
     {
       __u16 *next_usid = NULL;
@@ -211,8 +211,7 @@ static __always_inline int usid_behavior_uN(struct __sk_buff *skb, __u16 usid_bo
 SEC("lwt_xmit/usid_uN")
 int do_usid_uN(struct __sk_buff *skb)
 {
-  // __u16 usid_block_length = USID_BLOCK_LENGTH;
-  return usid_behavior_uN(skb, USID_BLOCK_LENGTH, USID_LENGTH);
+  return usid_behavior_uN(skb, USID_BLOCK_LENGTH);
 }
 
 SEC("lwt_xmit/usid_uD")
